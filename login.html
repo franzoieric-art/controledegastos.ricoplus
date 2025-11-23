@@ -56,6 +56,42 @@
             margin-right: auto;
         }
 
+        /* --- CORREÇÃO DA LISTA DE DIAS (Ocultar por padrão) --- */
+        [id^="expense-accordion-container-"] .accordion-item {
+            display: none; /* ESCONDE TODOS OS DIAS INICIALMENTE */
+        }
+        [id^="expense-accordion-container-"] .accordion-item.active {
+            display: block; /* SÓ MOSTRA O DIA SELECIONADO */
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- CORREÇÃO DO AVISO "SALVO" (Flutuante Estilo Apple) --- */
+        #save-feedback {
+            position: fixed; /* Fixo na tela */
+            bottom: 30px; /* Distância do fundo */
+            left: 50%;
+            transform: translateX(-50%) translateY(20px); /* Centralizado */
+            background-color: rgba(0, 0, 0, 0.8); /* Fundo escuro */
+            color: white;
+            padding: 8px 24px;
+            border-radius: 9999px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(8px);
+            pointer-events: none; /* Não interfere no clique */
+        }
+        #save-feedback.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
         /* CSS DA IA (Corrigido para cores) */
         #ai-analysis-result { font-size: 0.95rem; line-height: 1.7; }
         #ai-analysis-result { color: #1f2937 !important; }
@@ -67,6 +103,7 @@
         html.dark #ai-analysis-result h1, html.dark #ai-analysis-result h2, html.dark #ai-analysis-result h3 { color: #f3f4f6 !important; }
         #ai-analysis-result ul, #ai-analysis-result ol { margin-bottom: 1rem; padding-left: 1.5rem; list-style-position: outside; }
         #ai-analysis-result ul { list-style-type: disc; }
+        #ai-analysis-result li { margin-bottom: 0.5rem; }
         
         /* Componentes Gerais */
         .card { background-color: var(--card-bg); border: 1px solid var(--border-color); box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03); }
@@ -118,11 +155,15 @@
         </svg>
         <h2 class="text-xl font-semibold">Carregando dados...</h2>
     </div>
+    
+    <div id="save-feedback">Salvo ✓</div>
 
-    <div id="auth-screen" class="flex items-center justify-center min-h-screen w-full px-4">
+    <div id="auth-screen" class="flex items-center justify-center min-h-[90vh] w-full">
         <div class="w-full max-w-md bg-[var(--card-bg)] p-8 sm:p-10 rounded-2xl shadow-lg border border-[var(--border-color)]">
             <div class="text-center mb-8 flex flex-col items-center">
-<img src="/images/logo.png" alt="Logo Rico Plus" class="h-24 w-auto mb-4 object-contain mx-auto">                <p class="text-[var(--muted-text)] mt-2">Exclusivo para membros Rico Plus.</p>
+                <img src="https://raw.githubusercontent.com/franzoieric-art/controledegastos.franzoitech/main/ricoplus-landing-page/logoricoplus.png" alt="Logo Rico Plus" class="h-24 w-auto mb-4 object-contain mx-auto">
+                <h1 id="auth-title" class="text-2xl sm:text-3xl font-bold text-[var(--text-color)]">Acesso ao Painel</h1>
+                <p class="text-[var(--muted-text)] mt-2">Exclusivo para membros Rico Plus.</p>
             </div>
             
             <div class="space-y-4">
@@ -253,7 +294,6 @@
         </div>
 
         <div class="painel-principal max-w-7xl mx-auto card p-4 md-p-8 rounded-2xl relative">
-            <div id="save-feedback">Salvo ✓</div>
             
             <div id="user-header" class="flex flex-row items-center justify-between mb-8 pb-6 border-b" style="border-color: var(--border-color);">
                 <div class="flex items-center gap-4">

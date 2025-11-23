@@ -907,98 +907,9 @@ const App = {
         });
     },
 
-    ai: {
-        async getFinancialAnalysis(monthIndex) {
-            App.ui.aiAnalysisModal.classList.remove('hidden');
-            App.ui.aiAnalysisResult.innerHTML = '<p class="muted-text">Analisando seus dados...</p>';
-            try {
-                const monthData = App.state.monthlyData[monthIndex];
-                if (!monthData) throw new Error("Dados do mês não encontrados.");
-                const prompt = `**Contexto, Regras e Funcionalidades do App:**\n1. Você é o assistente de IA da plataforma "Rico Plus".\n2. Você pode dar dicas financeiras gerais, mas ao sugerir ações, SÓ PODE usar as funcionalidades existentes.\n3. Funcionalidades existentes: Lançamento de ganhos/despesas, categorização, metas de gastos, resumos, gráficos, lançamentos recorrentes, gestão de cartões, exportação PDF/CSV.\n4. **NÃO INVENTE** funcionalidades que não existem (ex: notificações).\n5. **NUNCA** mencione apps concorrentes.\n\n**Tarefa:**\nGere um relatório em HTML (sem texto fora do HTML) analisando os dados: ${JSON.stringify(monthData)}.\nO relatório deve conter:\n1. Um resumo dos ganhos e gastos.\n2. A maior categoria de despesa pessoal.\n3. Três sugestões práticas para melhorar a saúde financeira, baseadas nas funcionalidades existentes do Rico Plus.\n`;
-                const analysisResult = await this.callVercelFunction(prompt);
-                const cleanedResponse = App.helpers.cleanAIResponse(analysisResult);
-App.ui.aiAnalysisResult.innerHTML = `<div class="prose dark:prose-invert max-w-none">${cleanedResponse}</div>`;            } catch (error) {
-                console.error("Erro ao obter análise da IA:", error);
-                App.ui.aiAnalysisResult.innerHTML = '<p style="color: var(--red-color);">Ocorreu um erro ao tentar analisar os dados.</p>';
-            }
-        },
-        async getAnnualFinancialAnalysis() {
-            App.ui.aiAnalysisModal.classList.remove('hidden');
-            App.ui.aiAnalysisResult.innerHTML = '<p class="muted-text">Analisando seus dados anuais...</p>';
-            try {
-                const annualData = App.state.monthlyData;
-                if (!annualData) throw new Error("Dados anuais não encontrados.");
-                const prompt = `**Contexto, Regras e Funcionalidades do App:**\n1. Você é o assistente de IA da plataforma "Rico Plus".\n2. Você pode dar dicas financeiras gerais, mas ao sugerir ações, SÓ PODE usar as funcionalidades existentes.\n3. Funcionalidades existentes: Lançamento de ganhos/despesas, categorização, metas de gastos, resumos, gráficos, lançamentos recorrentes, gestão de cartões, exportação PDF/CSV.\n4. **NÃO INVENTE** funcionalidades que não existem (ex: notificações).\n5. **NUNCA** mencione apps concorrentes.\n\n**Tarefa:**\nGere um relatório em HTML (sem texto fora do HTML) analisando os dados anuais: ${JSON.stringify(annualData)}.\nO relatório deve conter:\n1. Um resumo geral dos ganhos, gastos e saldo final do ano.\n2. O mês de maior gasto e o mês de maior ganho.\n3. Três insights estratégicos para o próximo ano.\n`;
-                const analysisResult = await this.callVercelFunction(prompt);
-                const cleanedResponse = App.helpers.cleanAIResponse(analysisResult);
-                App.ui.aiAnalysisResult.innerHTML = cleanedResponse;
-            } catch (error) {
-                console.error("Erro ao obter análise anual da IA:", error);
-                App.ui.aiAnalysisResult.innerHTML = '<p style="color: var(--red-color);">Ocorreu um erro ao tentar analisar os dados anuais.</p>';
-            }
-        },
-        async getChatbotResponse(userMessage) {
-            try {
-                const financialData = App.state.monthlyData;
-                const prompt = `**Contexto, Regras e Funcionalidades do App:**\n1. Você é o assistente de IA da plataforma "Rico Plus". Sua personalidade é prestativa e focada em ajudar.\n2. Você pode dar dicas financeiras gerais e conceituais (ex: importância de poupar).\n3. **REGRA CRÍTICA:** Ao sugerir uma AÇÃO PRÁTICA ou FERRAMENTA, você SÓ PODE se basear na seguinte lista de funcionalidades que REALMENTE EXISTEM no Rico Plus:\n    - Lançamento de ganhos (PJ/PF) e despesas.\n    - Categorização de gastos e definição de metas de orçamento.\n    - Resumos, saldos e gráficos.\n    - Lançamentos recorrentes.\n    - Gerenciamento de cartões de crédito.\n4. **NÃO INVENTE** funcionalidades que não estão na lista (ex: notificações).\n5. **NUNCA** mencione apps concorrentes. Se o usuário pedir uma ferramenta, reforce o uso do Rico Plus.\n\n**Tarefa:**\nResponda à pergunta do usuário: "${userMessage}". Use os dados financeiros a seguir como base: ${JSON.stringify(financialData)}.\nFormate sua resposta de forma clara usando Markdown.\n`;
-                const aiResponse = await this.callVercelFunction(prompt);
-                const messagesContainer = document.getElementById('chatbot-messages');
-                messagesContainer.removeChild(messagesContainer.lastChild);
-                const formattedResponse = marked.parse(aiResponse);
-                messagesContainer.innerHTML += `<div class="p-3 rounded-lg max-w-[85%] text-sm" style="background-color: var(--secondary-bg);"><p class="font-bold mb-1">Assistente</p><div class="prose dark:prose-invert max-w-none">${formattedResponse}</div></div>`;
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            } catch (error) {
-                console.error("Erro na resposta do chatbot:", error);
-                const messagesContainer = document.getElementById('chatbot-messages');
-                messagesContainer.removeChild(messagesContainer.lastChild);
-                messagesContainer.innerHTML += `<div class="p-3 rounded-lg max-w-[85%] text-sm" style="background-color: var(--secondary-bg);"><p class="font-bold mb-1">Assistente</p><p>Desculpe, não consegui processar sua pergunta. Tente novamente.</p></div>`;
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
-        },
-        async getCategorySuggestion(description, entryId, button) {
-            const originalContent = button.innerHTML;
-            button.innerHTML = '...';
-            button.disabled = true;
-            try {
-                const availableCategories = App.state.categories.map(c => c.name).join(', ');
-                const prompt = `Analise a despesa: "${description}".\nQual das seguintes categorias melhor se encaixa? Categorias disponíveis: [${availableCategories}].\nResponda APENAS com o nome exato de uma das categorias da lista. Sem frases, apenas a categoria.`;
-                let suggestedCategory = await this.callVercelFunction(prompt);
-                suggestedCategory = suggestedCategory.trim().replace(/["'.]/g, '');
-                const entryElement = button.closest('.expense-entry-row');
-                const selectElement = entryElement.querySelector('[data-field="category"]');
-                const categoryExists = App.state.categories.find(c => c.name.toLowerCase() === suggestedCategory.toLowerCase());
-                if (selectElement && categoryExists) {
-                    selectElement.value = categoryExists.name;
-                    const event = new Event('input', { bubbles: true });
-                    selectElement.dispatchEvent(event);
-                } else {
-                    console.warn(`Categoria sugerida "${suggestedCategory}" não é válida ou não foi encontrada.`);
-                }
-            } catch (error) {
-                console.error("Erro ao obter sugestão de categoria:", error);
-            } finally {
-                button.innerHTML = originalContent;
-                button.disabled = false;
-            }
-        },
-        async callVercelFunction(prompt) {
-            // CORREÇÃO AQUI: Usando caminho relativo para evitar CORS e HTTPS problems
-            const VERCEL_API_URL = "/api/analyze";
-            const response = await fetch(VERCEL_API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: prompt })
-            });
-            if (!response.ok) {
-                throw new Error(`Erro na API da Vercel: ${response.statusText}`);
-            }
-            const data = await response.json();
-            return data.analysis;
-        }
-    },
-
+    // === AQUI ESTÁ A NOVA RENDERIZAÇÃO DAS LISTAS DO MODAL (LIMPA E ORGANIZADA) ===
     render: {
-        updateHeader() {
+        updateHeader: function() {
             const name = App.state.profile.name?.split(' ')[0] || 'Visitante';
             document.getElementById('greeting-text').textContent = `Olá, ${name}`;
             const hour = new Date().getHours();
@@ -1009,17 +920,18 @@ App.ui.aiAnalysisResult.innerHTML = `<div class="prose dark:prose-invert max-w-n
             const avatarUrl = App.state.profile.avatarUrl || 'https://raw.githubusercontent.com/franzoieric-art/controledegastos.franzoitech/main/ricoplus-landing-page/images/default-avatar.svg';
             document.getElementById('user-avatar').src = avatarUrl;
         },
-        renderCalendarView(monthIndex) {
-            const container = document.getElementById(`calendar-container-${monthIndex}`);
+        renderCalendarView: function(monthIndex) {
+             // ... (O código original do renderCalendarView)
+             const container = document.getElementById(`calendar-container-${monthIndex}`);
             if (!container) return;
             const year = new Date().getFullYear();
             const firstDay = new Date(year, monthIndex, 1);
             const lastDay = new Date(year, monthIndex + 1, 0);
             const startingDayOfWeek = firstDay.getDay();
             const monthName = App.constants.monthNames[monthIndex];
-            let headerHTML = `<div class="calendar-nav-header flex items-center justify-between mb-6 p-1.5 rounded-2xl bg-[var(--secondary-bg)]"><button class="calendar-nav-btn w-10 h-10 rounded-xl hover:bg-white/50 transition-colors" data-action="prev-month">‹</button><div class="flex items-center gap-3"><h3 class="text-base font-semibold text-[var(--text-color)]">${monthName} ${year}</h3><button class="px-3 py-1 text-xs font-semibold rounded-lg bg-[var(--card-bg)] shadow-sm border border-[var(--border-color)]" data-action="show-annual">Anual</button></div><button class="calendar-nav-btn w-10 h-10 rounded-xl hover:bg-white/50 transition-colors" data-action="next-month">›</button></div>`;
+            let headerHTML = `<div class="calendar-nav-header flex items-center justify-between mb-4 p-2 rounded-xl" style="background-color: var(--input-bg);"><button class="calendar-nav-btn" data-action="prev-month" title="Mês Anterior">‹</button><div class="flex flex-col sm:flex-row items-center gap-1 sm:gap-4"><h3 class="text-lg font-semibold text-center">${monthName} ${year}</h3><button class="px-3 py-1 text-xs font-semibold rounded-lg" style="background-color: var(--secondary-bg); color: var(--secondary-text);" data-action="show-annual">Balanço Anual</button></div><button class="calendar-nav-btn" data-action="next-month" title="Próximo Mês">›</button></div>`;
             let gridHTML = '<div class="calendar-grid">';
-            ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].forEach(day => { gridHTML += `<div class="calendar-header text-xs uppercase tracking-wide opacity-60">${day}</div>`; });
+            ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].forEach(day => { gridHTML += `<div class="calendar-header">${day}</div>`; });
             for (let i = 0; i < startingDayOfWeek; i++) { gridHTML += '<div></div>'; }
             for (let day = 1; day <= lastDay.getDate(); day++) {
                 const dayData = App.state.monthlyData[monthIndex].expenses[day - 1];
@@ -1030,42 +942,37 @@ App.ui.aiAnalysisResult.innerHTML = `<div class="prose dark:prose-invert max-w-n
             gridHTML += '</div>';
             container.innerHTML = headerHTML + gridHTML;
         },
-        createMonthContentHTML: (monthIndex) => { return `<div id="month-${monthIndex}-content" class="month-content"><div class="flex justify-end gap-2 mb-6"><button class="export-csv-btn px-4 py-2 text-xs font-semibold rounded-lg border border-[var(--border-color)] hover:bg-[var(--secondary-bg)] transition-colors" data-month-index="${monthIndex}">CSV</button><button class="export-pdf-btn px-4 py-2 text-xs font-semibold rounded-lg border border-[var(--border-color)] hover:bg-[var(--secondary-bg)] transition-colors" data-month-index="${monthIndex}">PDF</button></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8"><div class="lg:col-span-1 p-6 rounded-3xl card border-l-4 border-yellow-400 bg-gradient-to-br from-white to-yellow-50/50 dark:from-[var(--card-bg)] dark:to-[var(--card-bg)]"><h2 class="text-lg font-bold mb-4 flex items-center gap-2">💼 Jurídica</h2><div id="pj-entries-container-${monthIndex}" class="flex flex-col gap-3 mb-4"></div><button class="add-entry-btn w-full py-2.5 text-sm font-semibold rounded-xl bg-yellow-100 text-yellow-700 hover:bg-yellow-200 transition-colors" data-month-index="${monthIndex}" data-type="pj">+ Adicionar Ganho</button></div><div class="lg:col-span-1 p-6 rounded-3xl card border-l-4 border-green-400 bg-gradient-to-br from-white to-green-50/50 dark:from-[var(--card-bg)] dark:to-[var(--card-bg)]"><h2 class="text-lg font-bold mb-4 flex items-center gap-2">👤 Física</h2><div id="pf-entries-container-${monthIndex}" class="flex flex-col gap-3 mb-4"></div><button class="add-entry-btn w-full py-2.5 text-sm font-semibold rounded-xl bg-green-100 text-green-700 hover:bg-green-200 transition-colors" data-month-index="${monthIndex}" data-type="pf">+ Adicionar Ganho</button></div><div class="lg:col-span-1 grid gap-6"><div><div class="p-6 rounded-3xl card border-l-4 border-blue-400 space-y-4"><div class="flex justify-between items-end border-b border-dashed border-gray-200 pb-3"><div><label class="block text-xs font-medium uppercase tracking-wider opacity-60">Caixa Empresa</label><p id="companyCash-${monthIndex}" class="text-2xl font-bold mt-1">R$ 0,00</p></div></div><div class="flex justify-between items-end"><div><label class="block text-xs font-medium uppercase tracking-wider opacity-60">Caixa Pessoal</label><p id="personalCash-${monthIndex}" class="text-2xl font-bold mt-1">R$ 0,00</p></div></div></div></div><div><div id="summary-card-${monthIndex}" class="p-6 rounded-3xl card border-l-4 border-purple-400"><h2 class="text-lg font-bold mb-4">Resumo</h2><div class="space-y-3 text-sm"><div class="flex justify-between items-center"><span>Gastos Pessoais</span><span id="totalPersonalExpenses-${monthIndex}" class="font-semibold text-red-500">R$ 0,00</span></div><div class="flex justify-between items-center"><span>Gastos Empresa</span><span id="totalBusinessExpenses-${monthIndex}" class="font-semibold text-red-500">R$ 0,00</span></div><div class="h-px bg-[var(--border-color)] my-2"></div><div class="flex justify-between items-center"><span class="opacity-80">Sobrou (Pessoal)</span><span id="remainingPersonal-${monthIndex}" class="font-bold">R$ 0,00</span></div><div class="flex justify-between items-center"><span class="opacity-80">Sobrou (Empresa)</span><span id="remainingBusiness-${monthIndex}" class="font-bold">R$ 0,00</span></div><div class="p-3 mt-2 rounded-xl bg-[var(--secondary-bg)] flex justify-between items-center"><span class="font-bold">Saldo Total</span><span id="remainingTotal-${monthIndex}" class="text-lg font-extrabold">R$ 0,00</span></div></div><div id="budget-alerts-${monthIndex}" class="mt-4 text-xs bg-red-50 text-red-600 p-3 rounded-lg hidden:empty"></div></div></div></div></div><div class="text-center mb-8"><button class="ai-analysis-btn group px-6 py-3 text-white font-semibold rounded-full shadow-lg shadow-indigo-200 dark:shadow-none transition-all hover:scale-105 flex items-center justify-center gap-2 mx-auto bg-gradient-to-r from-indigo-500 to-purple-600" data-month-index="${monthIndex}"><span>✨ Analisar Mês com IA</span></button></div><div id="calendar-container-${monthIndex}" class="mb-8"></div><div id="expense-section-wrapper-${monthIndex}" class=""><div id="expense-accordion-container-${monthIndex}" class="space-y-3 mb-8"></div></div><div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-8"><div class="card p-6 rounded-3xl"><h2 class="text-lg font-semibold text-center mb-6">Distribuição</h2><div class="relative mx-auto" style="height: 250px;"><canvas id="budgetPieChart-${monthIndex}"></canvas></div></div><div class="card p-6 rounded-3xl"><h2 class="text-lg font-semibold text-center mb-6">Métodos de Pagamento</h2><div class="relative mx-auto" style="height: 250px;"><canvas id="paymentMethodChart-${monthIndex}"></canvas></div></div><div class="card p-6 rounded-3xl"><h2 class="text-lg font-semibold text-center mb-6">Metas vs. Realizado</h2><div class="relative mx-auto" style="height: 250px;"><canvas id="budgetGoalsChart-${monthIndex}"></canvas></div></div></div></div>` },
-        createBalanceContentHTML: () => { return `<div id="month-12-content" class="month-content"><div class="flex items-center justify-center gap-4 mb-8"><h2 class="text-3xl font-bold">Balanço Anual</h2><button class="px-3 py-1.5 text-sm font-semibold rounded-lg" style="background-color: var(--secondary-bg); color: var(--secondary-text);" data-action="back-to-months">← Voltar</button></div><div class="text-center mb-8 -mt-4"><button id="ai-annual-analysis-btn" class="px-5 py-2 text-white font-semibold rounded-xl shadow-sm transition-colors" style="background-color: var(--primary-color);">Analisar Ano com IA ✨</button></div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 text-center"><div class="card border-t-4 border-yellow-400 p-5 rounded-2xl"><span class="block text-sm muted-text mb-2">Total Ganhos PJ</span><span id="totalAnnualPJ" class="text-2xl font-semibold">R$ 0,00</span></div><div class="card border-t-4 border-green-400 p-5 rounded-2xl"><span class="block text-sm muted-text mb-2">Total Ganhos PF</span><span id="totalAnnualPF" class="text-2xl font-semibold">R$ 0,00</span></div><div class="card border-t-4 border-red-400 p-5 rounded-2xl"><span class="block text-sm muted-text mb-2">Gastos Totais</span><span id="totalAnnualExpenses" class="text-2xl font-semibold">R$ 0,00</span></div><div class="card border-t-4 border-blue-400 p-5 rounded-2xl"><span class="block text-sm muted-text mb-2">Saldo Final</span><span id="annualBalance" class="text-2xl font-bold">R$ 0,00</span><p id="annualPerformance" class="text-lg font-semibold mt-1"></p></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div class="card p-6 rounded-2xl lg:col-span-2"><h3 class="text-xl font-semibold text-center mb-4">Desempenho Mensal</h3><div class="relative mx-auto" style="height: 400px;"><canvas id="monthlyPerformanceBarChart"></canvas></div></div><div class="card p-6 rounded-2xl"><h3 class="text-xl font-semibold text-center mb-4">Maiores Gastos do Ano (Top 5)</h3><div id="top-spends-container" class="text-sm space-y-2 max-h-96 overflow-y-auto p-2"></div></div></div></div>` },
-        createEntryElement: (config) => {
-            const { monthIndex, dayIndex, category, entry, type } = config;
+        createMonthContentHTML: function(monthIndex) {
+            return `<div id="month-${monthIndex}-content" class="month-content"><div class="flex justify-end gap-2 mb-4"><button class="export-csv-btn px-4 py-2 text-sm font-semibold rounded-lg" style="background-color: var(--secondary-bg); color: var(--secondary-text);" data-month-index="${monthIndex}">Exportar CSV</button><button class="export-pdf-btn px-4 py-2 text-sm font-semibold rounded-lg" style="background-color: var(--secondary-bg); color: var(--secondary-text);" data-month-index="${monthIndex}">Exportar PDF</button></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8"><div class="lg:col-span-1 p-5 rounded-2xl card border-t-4 border-yellow-400"><h2 class="text-xl font-semibold mb-4">Ganhos Pessoa Jurídica</h2><div id="pj-entries-container-${monthIndex}" class="flex flex-col gap-3 mb-3"></div><button class="add-entry-btn mt-2 w-full py-2 text-sm font-semibold rounded-lg" style="background-color: var(--secondary-bg); color: var(--secondary-text);" data-month-index="${monthIndex}" data-type="pj">+ Adicionar Ganho PJ</button></div><div class="lg:col-span-1 p-5 rounded-2xl card border-t-4 border-green-400"><h2 class="text-xl font-semibold mb-4">Ganhos Pessoa Física</h2><div id="pf-entries-container-${monthIndex}" class="flex flex-col gap-3 mb-3"></div><button class="add-entry-btn mt-2 w-full py-2 text-sm font-semibold rounded-lg" style="background-color: var(--secondary-bg); color: var(--secondary-text);" data-month-index="${monthIndex}" data-type="pf">+ Adicionar Ganho PF</button></div><div class="lg:col-span-1 grid gap-6"><div><div class="p-5 rounded-2xl card border-t-4 border-blue-400 space-y-4"><div class="space-y-1"><label class="block text-sm font-medium muted-text">Caixa da empresa:</label><p id="companyCash-${monthIndex}" class="text-2xl font-semibold">R$ 0,00</p></div><div class="space-y-1"><label class="block text-sm font-medium muted-text">Caixa pessoal:</label><p id="personalCash-${monthIndex}" class="text-2xl font-semibold">R$ 0,00</p></div></div></div><div><div id="summary-card-${monthIndex}" class="p-5 rounded-2xl card border-t-4 border-purple-400"><h2 class="text-xl font-semibold mb-4">Resumo do Mês</h2><div class="space-y-2 text-sm"><div class="flex justify-between items-center"><span>Gasto Pessoal:</span><span id="totalPersonalExpenses-${monthIndex}" class="font-semibold" style="color: var(--red-color);">R$ 0,00</span></div><div class="flex justify-between items-center"><span>Gasto Empresa:</span><span id="totalBusinessExpenses-${monthIndex}" class="font-semibold" style="color: var(--red-color);">R$ 0,00</span></div><div class="flex justify-between items-center pt-2 border-t" style="border-color: var(--border-color);"><span>Saldo Pessoal:</span><span id="remainingPersonal-${monthIndex}" class="font-semibold">R$ 0,00</span></div><div class="flex justify-between items-center"><span>Saldo Empresa:</span><span id="remainingBusiness-${monthIndex}" class="font-semibold">R$ 0,00</span></div><div class="flex justify-between items-center border-t pt-2 mt-2" style="border-color: var(--border-color);"><span class="font-semibold">Saldo Total:</span><span id="remainingTotal-${monthIndex}" class="text-xl font-bold">R$ 0,00</span></div></div><div id="budget-alerts-${monthIndex}" class="mt-3 text-xs"></div></div></div></div></div><div class="text-center mb-4"><button class="ai-analysis-btn px-5 py-2 text-white font-semibold rounded-xl shadow-sm transition-colors" style="background-color: var(--primary-color);" onmouseover="this.style.backgroundColor=getComputedStyle(this).getPropertyValue('--primary-color-hover')" onmouseout="this.style.backgroundColor=getComputedStyle(this).getPropertyValue('--primary-color')" data-month-index="${monthIndex}">Analisar Mês com IA ✨</button></div><div id="calendar-container-${monthIndex}" class="mb-8"></div><div id="expense-section-wrapper-${monthIndex}" class=""><div id="expense-accordion-container-${monthIndex}" class="space-y-2 mb-8"></div></div><div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-8"><div class="card p-6 rounded-2xl"><h2 class="text-xl font-semibold text-center mb-4">Balanço do Mês</h2><div class="relative mx-auto" style="max-width: 300px; height: 300px;"><canvas id="budgetPieChart-${monthIndex}"></canvas></div></div><div class="card p-6 rounded-2xl"><h2 class="text-xl font-semibold text-center mb-4">Gastos por Pagamento</h2><div class="relative mx-auto" style="max-width: 300px; height: 300px;"><canvas id="paymentMethodChart-${monthIndex}"></canvas></div></div><div class="card p-6 rounded-2xl"><h2 class="text-xl font-semibold text-center mb-4">Metas de Gastos (Pessoal)</h2><div class="relative mx-auto" style="height: 300px;"><canvas id="budgetGoalsChart-${monthIndex}"></canvas></div></div></div></div>`
+        },
+        createBalanceContentHTML: function() { 
+            return `<div id="month-12-content" class="month-content"><div class="flex items-center justify-center gap-4 mb-8"><h2 class="text-3xl font-bold">Balanço Anual</h2><button class="px-3 py-1.5 text-sm font-semibold rounded-lg" style="background-color: var(--secondary-bg); color: var(--secondary-text);" data-action="back-to-months">← Voltar</button></div><div class="text-center mb-8 -mt-4"><button id="ai-annual-analysis-btn" class="px-5 py-2 text-white font-semibold rounded-xl shadow-sm transition-colors" style="background-color: var(--primary-color);">Analisar Ano com IA ✨</button></div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 text-center"><div class="card border-t-4 border-yellow-400 p-5 rounded-2xl"><span class="block text-sm muted-text mb-2">Total Ganhos PJ</span><span id="totalAnnualPJ" class="text-2xl font-semibold">R$ 0,00</span></div><div class="card border-t-4 border-green-400 p-5 rounded-2xl"><span class="block text-sm muted-text mb-2">Total Ganhos PF</span><span id="totalAnnualPF" class="text-2xl font-semibold">R$ 0,00</span></div><div class="card border-t-4 border-red-400 p-5 rounded-2xl"><span class="block text-sm muted-text mb-2">Gastos Totais</span><span id="totalAnnualExpenses" class="text-2xl font-semibold">R$ 0,00</span></div><div class="card border-t-4 border-blue-400 p-5 rounded-2xl"><span class="block text-sm muted-text mb-2">Saldo Final</span><span id="annualBalance" class="text-2xl font-bold">R$ 0,00</span><p id="annualPerformance" class="text-lg font-semibold mt-1"></p></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div class="card p-6 rounded-2xl lg:col-span-2"><h3 class="text-xl font-semibold text-center mb-4">Desempenho Mensal</h3><div class="relative mx-auto" style="height: 400px;"><canvas id="monthlyPerformanceBarChart"></canvas></div></div><div class="card p-6 rounded-2xl"><h3 class="text-xl font-semibold text-center mb-4">Maiores Gastos do Ano (Top 5)</h3><div id="top-spends-container" class="text-sm space-y-2 max-h-96 overflow-y-auto p-2"></div></div></div></div>` 
+        },
+        createEntryElement: function(config) {
+             // ... (O código original do createEntryElement)
+             const { monthIndex, dayIndex, category, entry, type } = config;
             const d = document.createElement('div');
-            d.classList.add('group', 'flex', 'items-center', 'gap-3', 'w-full', 'p-2', 'rounded-xl', 'hover:bg-[var(--secondary-bg)]', 'transition-colors', 'expense-entry-row');
+            d.classList.add('flex', 'items-center', 'gap-2', 'w-full', 'flex-wrap', 'expense-entry-row');
             let r = '', p = '', c = '', s = '', aiBtn = '';
-            
-            // Botão de Remover (X) mais bonito
-            const removeBtn = (dataAttrs) => `<button class="remove-btn w-8 h-8 rounded-full bg-transparent hover:bg-red-100 text-gray-400 hover:text-red-500 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100" ${dataAttrs}><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clip-rule="evenodd" /></svg></button>`;
-
             if (type === 'expense') {
-                r = removeBtn(`data-type="expense" data-month-index="${monthIndex}" data-day="${dayIndex}" data-category="${category}" data-entry-id="${entry.id}"`);
-                p = `<select class="entry-input bg-transparent text-xs font-medium text-[var(--muted-text)] outline-none cursor-pointer hover:text-[var(--primary-color)]" data-field="paymentMethod" title="Método">${App.constants.basePaymentMethods.map(m => `<option value="${m}" ${entry.paymentMethod === m ? 'selected' : ''}>${m}</option>`).join('')}</select>`;
-                if (entry.paymentMethod === 'Crédito') { c = `<select class="entry-input bg-transparent text-xs font-medium text-[var(--muted-text)] outline-none cursor-pointer hover:text-[var(--primary-color)] ml-2" data-field="card" title="Cartão">${App.state.creditCards.map(c => `<option value="${c}" ${entry.card === c ? 'selected' : ''}>${c}</option>`).join('')}</select>`; }
-                s = `<select class="entry-input w-28 bg-[var(--input-bg)] rounded-lg px-2 py-1 text-xs border border-transparent hover:border-[var(--border-color)] outline-none" data-field="category">${App.state.categories.map(c => `<option value="${c.name}" ${entry.category === c.name ? 'selected' : ''}>${c.name}</option>`).join('')}</select>`;
-                aiBtn = `<button class="suggest-category-btn w-6 h-6 rounded-full flex items-center justify-center text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors" title="IA: Sugerir Categoria"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"><path d="M15.98 1.804a1 1 0 00-1.96 0l-.24 1.192a1 1 0 01-.784.785l-1.192.238a1 1 0 000 1.962l1.192.238a1 1 0 01.785.785l.238 1.192a1 1 0 001.962 0l.238-1.192a1 1 0 01.785-.785l1.192-.238a1 1 0 000-1.962l-1.192-.238a1 1 0 01-.785-.785l-.238-1.192zM6.949 5.684a1 1 0 00-1.898 0l-.683 5.651a1 1 0 01-.753.87l-5.582 1.276a1 1 0 000 1.955l5.582 1.277a1 1 0 01.753.87l.683 5.65a1 1 0 001.898 0l.683-5.65a1 1 0 01.753-.87l5.582-1.277a1 1 0 000-1.955l-5.582-1.276a1 1 0 01-.753-.87l-.683-5.651z" /></svg></button>`;
+                r = `<button class="remove-btn" data-type="expense" data-month-index="${monthIndex}" data-day="${dayIndex}" data-category="${category}" data-entry-id="${entry.id}">×</button>`;
+                p = `<select class="entry-input p-2 input-field text-sm w-full sm:w-auto" data-field="paymentMethod">${App.constants.basePaymentMethods.map(m => `<option value="${m}" ${entry.paymentMethod === m ? 'selected' : ''}>${m}</option>`).join('')}</select>`;
+                if (entry.paymentMethod === 'Crédito') { c = `<select class="entry-input p-2 input-field text-sm w-full sm:w-auto" data-field="card">${App.state.creditCards.map(c => `<option value="${c}" ${entry.card === c ? 'selected' : ''}>${c}</option>`).join('')}</select>`; }
+                s = `<select class="entry-input p-2 input-field text-sm w-full sm:w-auto" data-field="category">${App.state.categories.map(c => `<option value="${c.name}" ${entry.category === c.name ? 'selected' : ''}>${c.name}</option>`).join('')}</select>`;
+                aiBtn = `<div class="tooltip-container"><button class="suggest-category-btn flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-xl" style="background-color: var(--secondary-bg); color: var(--secondary-text);">✨</button><span class="tooltip-text">Sugerir categoria com IA</span></div>`;
             } else {
-                r = removeBtn(`data-type="${type}" data-month-index="${monthIndex}" data-entry-id="${entry.id}"`);
+                r = `<button class="remove-btn" data-type="${type}" data-month-index="${monthIndex}" data-entry-id="${entry.id}">×</button>`;
             }
-            
-            // Input de Texto (Descrição)
-            const descInput = `<input type="text" value="${entry.description}" placeholder="Descrição..." class="entry-input flex-grow bg-transparent border-b border-transparent hover:border-[var(--border-color)] focus:border-[var(--primary-color)] px-1 py-1 outline-none transition-colors text-sm" data-field="description">`;
-            
-            // Input de Valor (R$)
-            const amountInput = `<div class="relative flex items-center"><span class="text-xs text-[var(--muted-text)] mr-1">R$</span><input type="number" value="${entry.amount}" min="0" step="0.01" placeholder="0,00" class="entry-input w-20 bg-[var(--input-bg)] rounded-lg px-2 py-1 text-sm font-semibold text-right outline-none focus:ring-2 focus:ring-[var(--primary-color)] focus:ring-opacity-20 transition-all" data-field="amount"></div>`;
-
-            d.innerHTML = `${descInput}${amountInput}${s || ''}${aiBtn || ''}<div class="flex items-center gap-1 text-[var(--muted-text)]">${p || ''}<span class="card-selector-container">${c || ''}</span></div>${r}`;
+            d.innerHTML = `<input type="text" value="${entry.description}" placeholder="Descrição" class="entry-input flex-grow p-2 input-field text-sm" data-field="description"><input type="number" value="${entry.amount}" min="0" step="0.01" placeholder="0,00" class="entry-input w-28 p-2 input-field text-sm" data-field="amount">${s}${aiBtn}${p}<span class="card-selector-container">${c}</span>${r}`;
             return d;
         },
-        renderPJEntries: (m) => { const c = document.getElementById(`pj-entries-container-${m}`); if (!c) return; c.innerHTML = ''; App.state.monthlyData[m].pjEntries.forEach(e => c.appendChild(App.render.createEntryElement({ monthIndex: m, entry: e, type: 'pj' }))); },
-        renderPFEntries: (m) => { const c = document.getElementById(`pf-entries-container-${m}`); if (!c) return; c.innerHTML = ''; App.state.monthlyData[m].pfEntries.forEach(e => c.appendChild(App.render.createEntryElement({ monthIndex: m, entry: e, type: 'pf' }))); },
-        renderExpenseTable: (m) => { const container = document.getElementById(`expense-accordion-container-${m}`); if (!container) return; container.innerHTML = ''; for (let day = 0; day < 31; day++) { const item = document.createElement('div'); item.className = 'accordion-item card rounded-2xl overflow-hidden border border-[var(--border-color)] shadow-sm'; item.innerHTML = `<div class="accordion-trigger flex justify-between items-center p-4 cursor-pointer hover:bg-[var(--secondary-bg)] transition-colors"><div class="flex items-center gap-3"><span class="w-8 h-8 rounded-full bg-[var(--primary-color)] text-white flex items-center justify-center font-bold text-sm">${day + 1}</span><span class="font-semibold">Despesas do Dia</span></div><span class="arrow text-xl muted-text">▼</span></div><div class="accordion-content bg-[var(--bg-color)]/50"><div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-2"><div><h3 class="text-xs font-bold uppercase tracking-wider muted-text mb-3 pl-2">Gastos Pessoais</h3><div id="personal-entries-${m}-${day}" class="flex flex-col gap-2"></div><button class="add-entry-btn mt-3 w-full py-2 border border-dashed border-[var(--border-color)] rounded-xl text-xs font-medium text-[var(--muted-text)] hover:border-[var(--primary-color)] hover:text-[var(--primary-color)] transition-colors" data-month-index="${m}" data-day="${day}" data-type="expense" data-category="personal">+ Adicionar Despesa</button></div><div><h3 class="text-xs font-bold uppercase tracking-wider muted-text mb-3 pl-2">Gastos da Empresa</h3><div id="business-entries-${m}-${day}" class="flex flex-col gap-2"></div><button class="add-entry-btn mt-3 w-full py-2 border border-dashed border-[var(--border-color)] rounded-xl text-xs font-medium text-[var(--muted-text)] hover:border-[var(--primary-color)] hover:text-[var(--primary-color)] transition-colors" data-month-index="${m}" data-day="${day}" data-type="expense" data-category="business">+ Adicionar Despesa</button></div></div></div>`; container.appendChild(item); ['personal', 'business'].forEach(type => { const entriesContainer = item.querySelector(`#${type}-entries-${m}-${day}`); App.state.monthlyData[m].expenses[day][`${type}Entries`].forEach(e => entriesContainer.appendChild(App.render.createEntryElement({ monthIndex: m, dayIndex: day, category: type, entry: e, type: 'expense' }))); }); } },
-        updateBudgetAlerts: (m) => { const c = document.getElementById(`budget-alerts-${m}`); if (!c) return; const expenses = App.state.categories.reduce((a, cat) => ({...a, [cat.name]: 0 }), {}); App.state.monthlyData[m].expenses.forEach(d => { d.personalEntries.forEach(e => { if (expenses[e.category] !== undefined) expenses[e.category] += e.amount; }); }); const alerts = App.state.categories.map(cat => (expenses[cat.name] > cat.budget && cat.budget > 0) ? `<li class="flex items-start gap-2"><svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg><span><b>${cat.name}</b> excedeu em <b>${App.helpers.formatCurrency(expenses[cat.name] - cat.budget)}</b></span></li>` : '').filter(Boolean); c.innerHTML = alerts.length > 0 ? `<ul class="space-y-1">${alerts.join('')}</ul>` : ''; c.classList.toggle('hidden', alerts.length === 0); },
-        updateAllCharts: (m, totals) => {
-            const chartTextColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color');
+        renderPJEntries: function(m) { const c = document.getElementById(`pj-entries-container-${m}`); if (!c) return; c.innerHTML = ''; App.state.monthlyData[m].pjEntries.forEach(e => c.appendChild(App.render.createEntryElement({ monthIndex: m, entry: e, type: 'pj' }))); },
+        renderPFEntries: function(m) { const c = document.getElementById(`pf-entries-container-${m}`); if (!c) return; c.innerHTML = ''; App.state.monthlyData[m].pfEntries.forEach(e => c.appendChild(App.render.createEntryElement({ monthIndex: m, entry: e, type: 'pf' }))); },
+        renderExpenseTable: function(m) { const container = document.getElementById(`expense-accordion-container-${m}`); if (!container) return; container.innerHTML = ''; for (let day = 0; day < 31; day++) { const item = document.createElement('div'); item.className = 'accordion-item card rounded-xl overflow-hidden'; item.innerHTML = `<div class="accordion-trigger flex justify-between items-center p-4 cursor-pointer" style="background-color: var(--input-bg);"><span class="font-semibold">Dia ${day + 1}</span><span class="arrow text-xl muted-text">▼</span></div><div class="accordion-content"><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div><h3 class="font-semibold mb-3">Gastos Pessoais</h3><div id="personal-entries-${m}-${day}" class="flex flex-col gap-3"></div><button class="add-entry-btn mt-3 px-3 py-1.5 text-sm font-semibold rounded-lg" style="background-color: var(--secondary-bg); color: var(--secondary-text);" data-month-index="${m}" data-day="${day}" data-type="expense" data-category="personal">+ Gasto Pessoal</button></div><div><h3 class="font-semibold mb-3">Gastos da Empresa</h3><div id="business-entries-${m}-${day}" class="flex flex-col gap-3"></div><button class="add-entry-btn mt-3 px-3 py-1.5 text-sm font-semibold rounded-lg" style="background-color: var(--secondary-bg); color: var(--secondary-text);" data-month-index="${m}" data-day="${day}" data-type="expense" data-category="business">+ Gasto Empresa</button></div></div></div>`; container.appendChild(item); ['personal', 'business'].forEach(type => { const entriesContainer = item.querySelector(`#${type}-entries-${m}-${day}`); App.state.monthlyData[m].expenses[day][`${type}Entries`].forEach(e => entriesContainer.appendChild(App.render.createEntryElement({ monthIndex: m, dayIndex: day, category: type, entry: e, type: 'expense' }))); }); } },
+        updateBudgetAlerts: function(m) { const c = document.getElementById(`budget-alerts-${m}`); if (!c) return; const expenses = App.state.categories.reduce((a, cat) => ({...a, [cat.name]: 0 }), {}); App.state.monthlyData[m].expenses.forEach(d => { d.personalEntries.forEach(e => { if (expenses[e.category] !== undefined) expenses[e.category] += e.amount; }); }); const alerts = App.state.categories.map(cat => (expenses[cat.name] > cat.budget && cat.budget > 0) ? `<li style="color: var(--red-color);">${cat.name}: ${App.helpers.formatCurrency(expenses[cat.name] - cat.budget)} acima da meta.</li>` : '').filter(Boolean); c.innerHTML = alerts.length > 0 ? `<p class="font-semibold mt-2">Atenção ao Orçamento:</p><ul class="list-disc list-inside ml-4">${alerts.join('')}</ul>` : ''; },
+        updateAllCharts: function(m, totals) {
+            // ... (O código original do updateAllCharts)
+             const chartTextColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color');
             const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color');
             const options = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: chartTextColor, font: { family: 'Inter' } } } } };
             const barOptions = {...options, scales: { y: { ticks: { color: chartTextColor }, grid: { color: gridColor } }, x: { ticks: { color: chartTextColor }, grid: { color: gridColor } } } };
@@ -1098,10 +1005,14 @@ App.ui.aiAnalysisResult.innerHTML = `<div class="prose dark:prose-invert max-w-n
             if (App.state.chartInstances.goals) App.state.chartInstances.goals.destroy();
             App.state.chartInstances.goals = new Chart(document.getElementById(`budgetGoalsChart-${m}`).getContext('2d'), { type: 'bar', data: { labels: App.state.categories.map(c => c.name), datasets: [{ label: 'Gasto', data: spentData, backgroundColor: barColors }, { label: 'Meta', data: budgetData, backgroundColor: '#2997ff' }] }, options: {...barOptions, indexAxis: 'y' } });
         },
-        renderBalanceSummary: (l) => { /* Mantido Igual */ },
-        updateAnnualCharts: (p) => { /* Mantido Igual */ },
-
-        // === AQUI ESTÁ A NOVA RENDERIZAÇÃO DAS LISTAS DO MODAL (LIMPA E ORGANIZADA) ===
+        renderBalanceSummary: function() { 
+            // ... (O código original do renderBalanceSummary)
+             let totals = { pj: 0, pf: 0, personal: 0, business: 0 }; let monthlyPerformance = { gains: [], expenses: [] }; let allPersonalSpends = []; for (let i = 0; i < 12; i++) { if (!App.state.monthlyData[i]) { monthlyPerformance.gains.push(0); monthlyPerformance.expenses.push(0); continue; }; const monthData = App.state.monthlyData[i]; let monthGains = 0; let monthExpenses = 0; monthData.pjEntries.forEach(e => { totals.pj += e.amount; monthGains += e.amount; }); monthData.pfEntries.forEach(e => { totals.pf += e.amount; monthGains += e.amount; }); monthData.expenses.forEach(day => { day.personalEntries.forEach(e => { totals.personal += e.amount; monthExpenses += e.amount; if (e.amount > 0) allPersonalSpends.push({...e, month: i }); }); day.businessEntries.forEach(e => { totals.business += e.amount; monthExpenses += e.amount; }); }); monthlyPerformance.gains.push(monthGains); monthlyPerformance.expenses.push(monthExpenses); } const balance = (totals.pj + totals.pf) - (totals.personal + totals.business); document.getElementById('totalAnnualPJ').textContent = App.helpers.formatCurrency(totals.pj); document.getElementById('totalAnnualPF').textContent = App.helpers.formatCurrency(totals.pf); document.getElementById('totalAnnualExpenses').textContent = App.helpers.formatCurrency(totals.personal + totals.business); document.getElementById('annualBalance').textContent = App.helpers.formatCurrency(balance); const perfEl = document.getElementById('annualPerformance'); perfEl.textContent = balance >= 0 ? 'Positivo' : 'Negativo'; perfEl.style.color = balance >= 0 ? 'var(--green-color)' : 'var(--red-color)'; const top5spends = allPersonalSpends.sort((a, b) => b.amount - a.amount).slice(0, 5); document.getElementById('top-spends-container').innerHTML = top5spends.map(spend => `<div class="p-2 rounded-lg" style="background-color: var(--input-bg);"><strong class="text-color">${spend.category}:</strong> ${App.helpers.formatCurrency(spend.amount)} <span class="text-xs muted-text">(${spend.description} em ${App.constants.monthNames[spend.month]})</span></div>`).join('') || '<p class="muted-text">Nenhum gasto pessoal registrado.</p>'; App.render.updateAnnualCharts(monthlyPerformance); 
+        },
+        updateAnnualCharts: function(performance) { 
+             // ... (O código original do updateAnnualCharts)
+             const chartTextColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color'); const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color'); const barOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: chartTextColor } } }, scales: { y: { ticks: { color: chartTextColor }, grid: { color: gridColor } }, x: { ticks: { color: chartTextColor }, grid: { color: gridColor } } } }; if (App.state.chartInstances.annualBar) App.state.chartInstances.annualBar.destroy(); App.state.chartInstances.annualBar = new Chart(document.getElementById('monthlyPerformanceBarChart').getContext('2d'), { type: 'bar', data: { labels: App.constants.monthNames.slice(0, 12), datasets: [{ label: 'Ganhos Totais', data: performance.gains, backgroundColor: '#32d74b' }, { label: 'Gastos Totais', data: performance.expenses, backgroundColor: '#ff453a' }] }, options: barOptions }); 
+        },
         renderCardList: () => { 
             App.ui.cardListContainer.innerHTML = App.state.creditCards.map(c => `
                 <div class="flex items-center justify-between p-3 rounded-xl bg-[var(--input-bg)] border border-[var(--border-color)] mb-2 group hover:border-[var(--primary-color)] transition-colors">
@@ -1157,7 +1068,6 @@ App.ui.aiAnalysisResult.innerHTML = `<div class="prose dark:prose-invert max-w-n
             `).join(''); 
         },
         
-        // ... resto das render functions (settingsModal e accountModal)
         renderSettingsModal: () => {
             App.render.renderCardList();
             App.render.renderCategoryList();
@@ -1181,29 +1091,3 @@ App.ui.aiAnalysisResult.innerHTML = `<div class="prose dark:prose-invert max-w-n
             }
         },
     }
-
-window.App = App;
-
-onAuthStateChanged(auth, user => {
-    console.log("--- onAuthStateChanged FOI ACIONADO ---");
-
-    if (user) {
-        console.log("STATUS: Usuário está LOGADO.", user);
-        authScreen.classList.add('hidden');
-        appScreen.classList.remove('hidden');
-        
-        if (window.location.pathname === '/login') {
-            window.history.replaceState(null, '', '/');
-        }
-
-        if(loadingOverlay) loadingOverlay.classList.remove('hidden');
-        App.init(user.uid);
-    } else {
-        console.log("STATUS: Usuário está DESLOGADO.");
-        App.state.currentUserId = null;
-        App.state.listenersBound = false; 
-        authScreen.classList.remove('hidden');
-        appScreen.classList.add('hidden');
-    }
-    console.log("------------------------------------");
-});
